@@ -8,6 +8,7 @@ import org.apache.beam.sdk.transforms.ParDo
 import org.apache.beam.sdk.values.KV
 import org.slf4j.LoggerFactory
 import java.util.*
+import kotlin.math.min
 
 
 const val BQ_DATASET = ""
@@ -15,6 +16,21 @@ const val BQ_TABLE = ""
 
 const val P = 17027399.toLong()
 const val M = 16890581.toLong()
+
+data class MinHashParameters(
+    val p: Long,
+    val m: Long,
+    val minHashLength: Int,
+    val maxNumberOfGrams: Int)
+
+
+object DefaultMinHashParameters {
+    val defaultParameters = MinHashParameters(
+        p =  17027399L,
+        m = 16890581L,
+        minHashLength = 10,
+        maxNumberOfGrams = 3)
+}
 
 /**
  * Minhashing with Dataflow
@@ -92,6 +108,7 @@ class BigQueryFn(
 
 }
 
+
 /**
  * min-hashes a set of objects
  */
@@ -100,3 +117,10 @@ internal fun <T> minHash(s: Set<T>): Array<Long> {
     return arrayOf()
 }
 
+internal fun computeNgrams(doc: String, maxNumberOfGrams: Int): Set<String> {
+    val tokens = doc.split(" ")
+    return (1..min(maxNumberOfGrams, tokens.size)).flatMap { gramSize ->
+        (0..tokens.size - gramSize).map { j -> tokens.subList(j, j + gramSize).joinToString(" ")
+        }
+    }.toSet()
+}
