@@ -19,7 +19,7 @@ const val M = 16890581.toLong()
 /**
  * Minhashing with Dataflow
  * @param key A string identifier for the document(s)
- * @param key The GCP path of the corresponding document(s)
+ * @param key The Google Cloud Storage path of the corresponding document(s)
  */
 class MinHash(
     private val key: String,
@@ -34,7 +34,6 @@ class MinHash(
      * Submits the job
      */
     fun submit() {
-
         logger.info("Creating dataflow job")
         val pipeline = Pipeline.create(PipelineOptionsFactory.create())
         val sourceLines = pipeline.apply(TextIO.read().from(documentPath))
@@ -44,7 +43,6 @@ class MinHash(
         BigQueryIO.writeTableRows().to("$PROJECT_ID:$BQ_DATASET.$BQ_TABLE")
         pipeline.run()
         logger.info("Submitted dataflow job")
-
     }
 }
 
@@ -101,3 +99,4 @@ internal fun <T> minHash(s: Set<T>): Array<Long> {
     //TODO("implement minHash")
     return arrayOf()
 }
+

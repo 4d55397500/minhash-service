@@ -32,11 +32,18 @@ const val PROJECT_ID = ""
 
 val gson = GsonBuilder().setLenient().disableHtmlEscaping().setPrettyPrinting().create()
 
+/**
+ * Design: submit to pubsub messages each containing one to many
+ * pairs <key, gcs document path> referencing documents to be minhashed
+ * and stored.
+ * The messages are sent to Dataflow (streaming job?) which performs the minhashing
+ * and writes pairs <key, minhashes> to BigQuery.
+ */
 object Main {
 
 
     private val SUBSCRIPTION_ID = ""
-    private val TOPIC = "samirtest"
+    private val TOPIC = ""
 
     private val logger = LoggerFactory.getLogger(Main::class.java)
 
