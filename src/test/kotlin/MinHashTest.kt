@@ -22,19 +22,13 @@ class MinHashTest {
     }
 
     @Test
-    fun `ngrams are extracted properly`() {
-        val gramExtractionA = computeNgrams(sampleDocs["doc1"]!!, 3)
-        val gramExtractionB = computeNgrams(sampleDocs["doc3"]!!, 200)
-        assert (gramExtractionA.size == 12) {
-            "Incorrect number of grams for 3-gram extraction" }
-        assert(gramExtractionA.containsAll(listOf("this", "sample document"))) {
-            "missing grams in gramExtractionA"
+    fun `k-shingles are extracted correctly`() {
+        assert (computeShingles(sampleDocs["doc1"]!!, 3).size == 3) {
+            "incorrect number of shingles"
         }
-        assert(gramExtractionB.containsAll(listOf("short", "document", "short document"))) {
-            "missing grams in gramExtractionB"
-        }
-        assert (gramExtractionB.size == 3) {
-            "Failed on 200-grams extraction on a short document"
+        assert(computeShingles(sampleDocs["doc1"]!!, 23).isEmpty()) {
+            "expected empty set for shingle number greater than token count"
         }
     }
+
 }
