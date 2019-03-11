@@ -13,7 +13,7 @@ class MinHashTest {
 
     @Test
     fun `the minhash operation produces proper behavior`() {
-
+        val s1 = setOf(12312, 231321, 412421)
     }
 
     @Test
@@ -28,6 +28,9 @@ class MinHashTest {
         }
         assert(computeShingles(sampleDocs["doc1"]!!, 23).isEmpty()) {
             "expected empty set for shingle number greater than token count"
+        }
+        computeShingles(sampleDocs["doc1"]!!, 3).forEach {
+            assert (it < Math.pow(2.0, 32.0)) { "expected 4-byte representation for k-shingles"}
         }
     }
 

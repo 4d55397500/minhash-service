@@ -8,85 +8,80 @@ import org.apache.beam.sdk.transforms.ParDo
 import org.apache.beam.sdk.values.KV
 import org.slf4j.LoggerFactory
 import java.util.*
-import kotlin.math.min
 
 
 const val BQ_DATASET = ""
 const val BQ_TABLE = ""
 
-const val LARGE_PRIME = 4294967311L
-const val P = 17027399.toLong()
-const val M = 16890581.toLong()
+const val LARGE_PRIME = 4294967311
+val RNG = Random(System.currentTimeMillis())
+val MAX_BYTE = Math.pow(2.0, 32.0).toInt()
 
-data class MinHashParameters(
-    val p: Long,
-    val m: Long,
-    val minHashLength: Int,
-    val maxNumberOfGrams: Int)
+data class HashFunctionParameters(val params: List<Pair<Int, Int>>)
 
+fun generateHashFunctionParameters(n: Int): HashFunctionParameters {
+    val params = (0 until n)
+        .map { Pair(1 + RNG.nextInt(MAX_BYTE) - 1, 1 + RNG.nextInt(MAX_BYTE) - 1) }
+    return HashFunctionParameters(params)
+}
+//
+///**
+// * Minhashing with Dataflow
+// * @param key A string identifier for the document(s)
+// * @param key The Google Cloud Storage path of the corresponding document(s)
+// */
+//class MinHash(
+//    private val key: String,
+//    private val documentPath: String
+//) {
+//
+//    companion object {
+//        private val logger = LoggerFactory.getLogger(MinHash::class.java)
+//    }
+//
+//    /**
+//     * Submits the job
+//     */
+//    fun submit() {
+//        logger.info("Creating dataflow job")
+//        val pipeline = Pipeline.create(PipelineOptionsFactory.create())
+//        val sourceLines = pipeline.apply(TextIO.read().from(documentPath))
+//        val minHashes = ParDo.of(MinHashFn(n = 10))
+//            .expand(sourceLines)
+//        val tableRows = ParDo.of(BigQueryFn(PROJECT_ID, BQ_DATASET, BQ_TABLE)).expand(minHashes)
+//        BigQueryIO.writeTableRows().to("$PROJECT_ID:$BQ_DATASET.$BQ_TABLE")
+//        pipeline.run()
+//        logger.info("Submitted dataflow job")
+//    }
+//}
 
-object DefaultMinHashParameters {
-    val defaultParameters = MinHashParameters(
-        p =  17027399L,
-        m = 16890581L,
-        minHashLength = 10,
-        maxNumberOfGrams = 3)
+class ReadSourceFn(): DoFn<KV<String, String>, KV<String, String>>() {
+
+    @ProcessElement
+    fun processElement(c: ProcessContext) {
+        val key = c.element().key
+        val gcsPath = c.element().value
+        val z = TextIO.readFiles()
+    }
 }
 
-/**
- * Minhashing with Dataflow
- * @param key A string identifier for the document(s)
- * @param key The Google Cloud Storage path of the corresponding document(s)
- */
-class MinHash(
-    private val key: String,
-    private val documentPath: String
-) {
-
-    companion object {
-        private val logger = LoggerFactory.getLogger(MinHash::class.java)
-    }
-
-    /**
-     * Submits the job
-     */
-    fun submit() {
-        logger.info("Creating dataflow job")
-        val pipeline = Pipeline.create(PipelineOptionsFactory.create())
-        val sourceLines = pipeline.apply(TextIO.read().from(documentPath))
-        val minHashes = ParDo.of(MinHashFn(nHashes = 10, maxNGrams = 3))
-            .expand(sourceLines)
-        val tableRows = ParDo.of(BigQueryFn(PROJECT_ID, BQ_DATASET, BQ_TABLE)).expand(minHashes)
-        BigQueryIO.writeTableRows().to("$PROJECT_ID:$BQ_DATASET.$BQ_TABLE")
-        pipeline.run()
-        logger.info("Submitted dataflow job")
-    }
-}
-
-/**
- * A dataflow dofn mapping documents to min hash values
- * @param number of hashes to use in the min-hash representation of the corresponding document
- * @param maxNGrams maximum n-grams size. Will extract all n-grams with
- * n up to and including this value
- */
 class MinHashFn(
-    private val nHashes: Int,
-    private val maxNGrams: Int): DoFn<String, KV<String, Array<Long>>>() {
+    private val n: Int, private val k: Int): DoFn<KV<String, String>, KV<String, Array<Int>>>() {
 
-    lateinit var minHashParams: List<Pair<Int, Int>>
+    lateinit var hashFunctionParameters: HashFunctionParameters
 
     @Setup
     fun setup() {
-        val rng = Random(System.currentTimeMillis())
-        minHashParams = (0 until nHashes)
-            .map {  Pair(1+ rng.nextInt(P.toInt() - 1), rng.nextInt(P.toInt())) }
+        hashFunctionParameters = generateHashFunctionParameters(n)
     }
 
     @ProcessElement
     fun processElement(c: ProcessContext) {
-        val tokens = c.element().split(" ")
-        //TODO("finish minhashing")
-
+        val key = c.element().key
+        val doc = c.element().value
+        val shingles = computeShingles(doc, k)
+        val minHashes = computeMinHashes(shingles, hashFunctionParameters)
+        c.output(KV.of(key, minHashes))
     }
 }
 
@@ -110,25 +105,26 @@ class BigQueryFn(
 }
 
 
-/**
- * min-hashes a set of objects
- */
-internal fun <T> getMinHashes(s: Set<T>, minHashLength: Int): Array<Long> {
-    val minHashVec = (1..minHashLength).map { Long.MAX_VALUE }.toMutableList()
-    return minHashVec.toTypedArray()
+internal fun computeMinHashes(s: Set<Int>, minHashParams: HashFunctionParameters): Array<Int> {
+    return minHashParams.params.map { param ->
+        val minHash = s.map { applyHashFunction(it, param.first, param.second) }
+            .min()
+            ?.toInt() ?: Int.MAX_VALUE
+        minHash
+    }.toTypedArray()
 }
+
+internal fun applyHashFunction(obj: Int, a: Int, b: Int) = (a * obj + b) % LARGE_PRIME
+
 
 /**
  * Compute k-shingles, returned in compressed 4-byte representation
  */
 internal fun computeShingles(doc: String, k: Int): Set<Int> {
     val tokens = doc.split(" ")
-    if (tokens.size < k) {
-        return setOf()
-    }
-    return (0..tokens.size - k).map {
-        hashString(tokens.subList(it, it + k).joinToString(" "))
-    }.toSet()
+    val shingles = if (tokens.size < k) { setOf() } else (0..tokens.size - k).map {
+        hashString(tokens.subList(it, it + k).joinToString(" ")) }.toSet()
+    return shingles
 }
 
 
@@ -143,4 +139,5 @@ internal fun hashString(s: String): Int {
 internal fun getModulo(n: Int, d: Int): Int {
     return n and (d-1)
 }
+
 
