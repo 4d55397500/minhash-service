@@ -14,6 +14,7 @@ import kotlin.math.min
 const val BQ_DATASET = ""
 const val BQ_TABLE = ""
 
+const val LARGE_PRIME = 4294967311L
 const val P = 17027399.toLong()
 const val M = 16890581.toLong()
 
@@ -112,15 +113,34 @@ class BigQueryFn(
 /**
  * min-hashes a set of objects
  */
-internal fun <T> minHash(s: Set<T>): Array<Long> {
-    //TODO("implement minHash")
-    return arrayOf()
+internal fun <T> getMinHashes(s: Set<T>, minHashLength: Int): Array<Long> {
+    val minHashVec = (1..minHashLength).map { Long.MAX_VALUE }.toMutableList()
+    return minHashVec.toTypedArray()
 }
 
-internal fun computeNgrams(doc: String, maxNumberOfGrams: Int): Set<String> {
+/**
+ * Compute k-shingles, returned in compressed 4-byte representation
+ */
+internal fun computeShingles(doc: String, k: Int): Set<Int> {
     val tokens = doc.split(" ")
-    return (1..min(maxNumberOfGrams, tokens.size)).flatMap { gramSize ->
-        (0..tokens.size - gramSize).map { j -> tokens.subList(j, j + gramSize).joinToString(" ")
-        }
+    if (tokens.size < k) {
+        return setOf()
+    }
+    return (0..tokens.size - k).map {
+        hashString(tokens.subList(it, it + k).joinToString(" "))
     }.toSet()
 }
+
+
+/**
+ * Hashes a string to a compressed 4-byte representation
+ */
+internal fun hashString(s: String): Int {
+    return getModulo(s.hashCode(), Math.pow(2.0, 32.0).toInt())
+}
+
+// n % d where  d is a power of two
+internal fun getModulo(n: Int, d: Int): Int {
+    return n and (d-1)
+}
+
