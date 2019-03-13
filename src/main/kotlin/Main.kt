@@ -111,7 +111,7 @@ object Main {
         val key = json.asJsonObject.get("key").asString
         val documentPath = json.asJsonObject.get("documentPath").asString
         logger.info("Submitting message to dataflow")
-        MinHash(key, documentPath).submit()
+//        MinHash(key, documentPath).submit()
     }
 
 

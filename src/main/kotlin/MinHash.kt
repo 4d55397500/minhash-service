@@ -55,6 +55,8 @@ fun generateHashFunctionParameters(n: Int): HashFunctionParameters {
 //    }
 //}
 
+
+// maps links to source strings
 class ReadSourceFn(): DoFn<KV<String, String>, KV<String, String>>() {
 
     @ProcessElement
@@ -65,6 +67,7 @@ class ReadSourceFn(): DoFn<KV<String, String>, KV<String, String>>() {
     }
 }
 
+// maps source strings to min hashes
 class MinHashFn(
     private val n: Int, private val k: Int): DoFn<KV<String, String>, KV<String, Array<Int>>>() {
 
