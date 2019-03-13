@@ -1,7 +1,8 @@
+import org.apache.beam.sdk.testing.PAssert
+import org.apache.beam.sdk.testing.TestPipeline
 import org.apache.beam.sdk.transforms.DoFnTester
+import org.apache.beam.sdk.transforms.ParDo
 import org.apache.beam.sdk.values.KV
-import org.hamcrest.Matchers
-import org.junit.Assert
 import org.junit.Test
 
 
@@ -13,7 +14,20 @@ class MinHashTest {
             "doc2" to "this is another sample document",
             "doc3" to "short document"
         )
+        val sampleSourcePaths = mapOf(
+            "doc1" to "gcs://foo/foo.txt",
+            "doc2" to "gcs://bar/bar.txt"
+        )
     }
+
+    @Test
+    fun `end-to-end dataflow pipeline test behaves correctly`() {
+        val p = TestPipeline.create()
+        val pcol1 = sourcesWithKeys(p, sampleSourcePaths.toList())
+        val pcol2 = pcol1.apply(ParDo.of(MinHashFn(3, 2)))
+        // PAssert.that() ....
+    }
+
 
     @Test
     fun `the minhash operation produces proper behavior`() {

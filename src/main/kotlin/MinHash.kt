@@ -4,10 +4,7 @@ import org.apache.beam.sdk.io.FileIO
 import org.apache.beam.sdk.io.TextIO
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO
 import org.apache.beam.sdk.options.PipelineOptionsFactory
-import org.apache.beam.sdk.transforms.DoFn
-import org.apache.beam.sdk.transforms.Flatten
-import org.apache.beam.sdk.transforms.MapElements
-import org.apache.beam.sdk.transforms.ParDo
+import org.apache.beam.sdk.transforms.*
 import org.apache.beam.sdk.values.KV
 import org.apache.beam.sdk.values.PCollection
 import org.apache.beam.sdk.values.PCollectionList
@@ -30,36 +27,6 @@ fun generateHashFunctionParameters(n: Int): HashFunctionParameters {
         .map { Pair(1 + RNG.nextInt(MAX_BYTE) - 1, 1 + RNG.nextInt(MAX_BYTE) - 1) }
     return HashFunctionParameters(params)
 }
-//
-///**
-// * Minhashing with Dataflow
-// * @param key A string identifier for the document(s)
-// * @param key The Google Cloud Storage path of the corresponding document(s)
-// */
-//class MinHash(
-//    private val key: String,
-//    private val documentPath: String
-//) {
-//
-//    companion object {
-//        private val logger = LoggerFactory.getLogger(MinHash::class.java)
-//    }
-//
-//    /**
-//     * Submits the job
-//     */
-//    fun submit() {
-//        logger.info("Creating dataflow job")
-//        val pipeline = Pipeline.create(PipelineOptionsFactory.create())
-//        val sourceLines = pipeline.apply(TextIO.read().from(documentPath))
-//        val minHashes = ParDo.of(MinHashFn(n = 10))
-//            .expand(sourceLines)
-//        val tableRows = ParDo.of(BigQueryFn(PROJECT_ID, BQ_DATASET, BQ_TABLE)).expand(minHashes)
-//        BigQueryIO.writeTableRows().to("$PROJECT_ID:$BQ_DATASET.$BQ_TABLE")
-//        pipeline.run()
-//        logger.info("Submitted dataflow job")
-//    }
-//}
 
 fun sourcesWithKeys(p: Pipeline, sources: List<Pair<String, String>>): PCollection<KV<String, String>> {
     return PCollectionList.of(sources.map { p
@@ -73,18 +40,6 @@ fun sourcesWithKeys(p: Pipeline, sources: List<Pair<String, String>>): PCollecti
     }).apply(Flatten.pCollections())
 }
 
-
-
-// maps links to source strings
-class ReadSourceFn(): DoFn<KV<String, String>, KV<String, String>>() {
-
-    @ProcessElement
-    fun processElement(c: ProcessContext) {
-        val key = c.element().key
-        val gcsPath = c.element().value
-        val z = TextIO.readFiles()
-    }
-}
 
 // maps source strings to min hashes
 class MinHashFn(
