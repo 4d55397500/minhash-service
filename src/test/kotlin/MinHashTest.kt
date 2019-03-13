@@ -1,3 +1,7 @@
+import org.apache.beam.sdk.transforms.DoFnTester
+import org.apache.beam.sdk.values.KV
+import org.hamcrest.Matchers
+import org.junit.Assert
 import org.junit.Test
 
 
@@ -13,12 +17,19 @@ class MinHashTest {
 
     @Test
     fun `the minhash operation produces proper behavior`() {
-        val s1 = setOf(12312, 231321, 412421)
+        val s = setOf(12312, 231321, 412421)
+        val minHashes = computeMinHashes(s, generateHashFunctionParameters(2))
     }
 
     @Test
-    fun `the minhash dataflow function operates correctly`() {
-
+    fun `the minhash DoFn function operates correctly`() {
+        val fnTester =
+            DoFnTester.of(MinHashFn(n = 3, k = 2))
+        val testInput = KV.of("doc1", sampleDocs["doc1"]!!)
+        val testOutputs = fnTester.processBundle(testInput)
+        assert (testOutputs.size == 1 && testOutputs.first().value.size == 3) {
+            "incorrect number of minhashes"
+        }
     }
 
     @Test
