@@ -1,4 +1,5 @@
 import com.google.api.services.bigquery.model.TableRow
+import com.google.common.hash.Hashing
 import org.apache.beam.sdk.Pipeline
 import org.apache.beam.sdk.io.FileIO
 import org.apache.beam.sdk.io.TextIO
@@ -28,28 +29,46 @@ fun generateHashFunctionParameters(n: Int): HashFunctionParameters {
     return HashFunctionParameters(params)
 }
 
-fun sourcesWithKeys(p: Pipeline, sources: List<Pair<String, String>>): PCollection<KV<String, String>> {
-    return PCollectionList.of(sources.map { p
-            .apply(FileIO.match().filepattern(it.second))
-            .apply(FileIO.readMatches())
-            .apply(
-                MapElements
-                .into(TypeDescriptors.kvs(TypeDescriptors.strings(), TypeDescriptors.strings()))
-                    .via { f -> KV.of(it.first, f.readFullyAsUTF8String()) }
-            )
-    }).apply(Flatten.pCollections())
+fun mockHashFunctionParameters(n: Int): HashFunctionParameters {
+    val params = (0 until n)
+        .map { Pair(1 + n * 367 - 1, 1 + n * 263 - 1) }
+    return HashFunctionParameters(params)
+}
+//fun sourcesWithKeys(p: Pipeline, sources: List<Pair<String, String>>): PCollection<KV<String, String>> {
+//    return PCollectionList.of(sources.map { p
+//            .apply(FileIO.match().filepattern(it.second))
+//            .apply(FileIO.readMatches())
+//            .apply(
+//                MapElements
+//                .into(TypeDescriptors.kvs(TypeDescriptors.strings(), TypeDescriptors.strings()))
+//                    .via { f -> KV.of(it.first, f.readFullyAsUTF8String()) }
+//            )
+//    }).apply(Flatten.pCollections())
+//}
+
+fun sourcesWithSha1Key(p: Pipeline, sources: List<Pair<String, String>>): PCollection<KV<String, String>> {
+    return PCollectionList.of(sources.mapIndexed { i,  it ->
+        p.apply("readSources_$i", TextIO.read().from(it.second))
+         .apply("addSha256Key_$i", ParDo.of(Sha256HashFn()))
+    }).apply("flatten", Flatten.pCollections())
 }
 
+class Sha256HashFn: DoFn<String, KV<String, String>>() {
+    @ProcessElement
+    fun processElement(c: ProcessContext) {
+        c.output(KV.of(Hashing.sha256().hashString(c.element(), Charsets.UTF_8).toString(), c.element()))
+    }
+}
 
 // maps source strings to min hashes
 class MinHashFn(
-    private val n: Int, private val k: Int): DoFn<KV<String, String>, KV<String, Array<Int>>>() {
-
+    private val n: Int, private val k: Int,
+    private val mock: Boolean = false): DoFn<KV<String, String>, KV<String, Array<Int>>>() {
     lateinit var hashFunctionParameters: HashFunctionParameters
 
     @Setup
     fun setup() {
-        hashFunctionParameters = generateHashFunctionParameters(n)
+        hashFunctionParameters = if (mock) mockHashFunctionParameters(n) else generateHashFunctionParameters(n)
     }
 
     @ProcessElement
@@ -78,7 +97,6 @@ class BigQueryFn(
             .set("minHashes", c.element().value)
         )
     }
-
 }
 
 
@@ -116,5 +134,4 @@ internal fun hashString(s: String): Int {
 internal fun getModulo(n: Int, d: Int): Int {
     return n and (d-1)
 }
-
 
