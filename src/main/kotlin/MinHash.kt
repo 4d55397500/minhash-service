@@ -1,11 +1,17 @@
 import com.google.api.services.bigquery.model.TableRow
 import org.apache.beam.sdk.Pipeline
+import org.apache.beam.sdk.io.FileIO
 import org.apache.beam.sdk.io.TextIO
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO
 import org.apache.beam.sdk.options.PipelineOptionsFactory
 import org.apache.beam.sdk.transforms.DoFn
+import org.apache.beam.sdk.transforms.Flatten
+import org.apache.beam.sdk.transforms.MapElements
 import org.apache.beam.sdk.transforms.ParDo
 import org.apache.beam.sdk.values.KV
+import org.apache.beam.sdk.values.PCollection
+import org.apache.beam.sdk.values.PCollectionList
+import org.apache.beam.sdk.values.TypeDescriptors
 import org.slf4j.LoggerFactory
 import java.util.*
 
@@ -54,6 +60,19 @@ fun generateHashFunctionParameters(n: Int): HashFunctionParameters {
 //        logger.info("Submitted dataflow job")
 //    }
 //}
+
+fun sourcesWithKeys(p: Pipeline, sources: List<Pair<String, String>>): PCollection<KV<String, String>> {
+    return PCollectionList.of(sources.map { p
+            .apply(FileIO.match().filepattern(it.second))
+            .apply(FileIO.readMatches())
+            .apply(
+                MapElements
+                .into(TypeDescriptors.kvs(TypeDescriptors.strings(), TypeDescriptors.strings()))
+                    .via { f -> KV.of(it.first, f.readFullyAsUTF8String()) }
+            )
+    }).apply(Flatten.pCollections())
+}
+
 
 
 // maps links to source strings
