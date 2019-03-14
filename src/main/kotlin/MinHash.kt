@@ -1,3 +1,4 @@
+import com.google.api.services.bigquery.model.TableReference
 import com.google.api.services.bigquery.model.TableRow
 import com.google.common.hash.Hashing
 import org.apache.beam.sdk.Pipeline
@@ -14,13 +15,32 @@ import java.util.*
 
 
 const val BQ_DATASET = ""
-const val BQ_TABLE = ""
+const val BQ_MINHASHES_TABLE = ""
+const val BQ_HASHMAP_TABLE = ""
+
 
 const val LARGE_PRIME = 4294967311
 val RNG = Random(System.currentTimeMillis())
 val MAX_BYTE = Math.pow(2.0, 32.0).toInt()
 
+
+
+fun runPipeline(p: Pipeline, sources: List<Pair<String, String>>) {
+
+    val sourcesCollection =
+        sourcesWithSha1Key(p, sources)
+    val minHashesCollection =
+        sourcesCollection.apply(ParDo.of(MinHashFn(4, 3)))
+    val bqHashTableRows =
+        buildBigQueryHashTable(minHashesCollection)
+    val bqMinHashesTableRows =
+        buildBigQueryMinHashTable(minHashesCollection)
+
+
+}
+
 data class HashFunctionParameters(val params: List<Pair<Int, Int>>)
+
 
 fun generateHashFunctionParameters(n: Int): HashFunctionParameters {
     val params = (0 until n)
@@ -41,10 +61,43 @@ fun sourcesWithSha1Key(p: Pipeline, sources: List<Pair<String, String>>): PColle
     }).apply("flatten", Flatten.pCollections())
 }
 
+
 class Sha256HashFn: DoFn<String, KV<String, String>>() {
     @ProcessElement
     fun processElement(c: ProcessContext) {
         c.output(KV.of(Hashing.sha256().hashString(c.element(), Charsets.UTF_8).toString(), c.element()))
+    }
+}
+
+fun buildBigQueryHashTable(minHashPCollection: PCollection<KV<String, Array<Int>>>): PCollection<TableRow> {
+    return minHashPCollection
+        .apply(ParDo.of(PartialHashesFn(3)))
+        .apply(GroupByKey.create<String, String>())
+        .apply(ParDo.of(BigQueryHashMapFn()))
+}
+
+fun buildBigQueryMinHashTable(minHashPCollection: PCollection<KV<String, Array<Int>>>): PCollection<TableRow> {
+    return minHashPCollection
+        .apply(ParDo.of(BigQueryMinHashTableFn()))
+}
+
+fun testGroupBy() {
+    val p = Pipeline.create()
+    val pcol1 = sourcesWithSha1Key(p, listOf())
+    val pcol2 = pcol1.apply(GroupByKey.create<String, String>())
+
+}
+
+// maps <doc hash, minhashes> -> multiple <partial min hash, doc hash>
+// each partial hash a dash-concatened string eg. 122,133,134 -> '122-133-134'
+class PartialHashesFn(private val m: Int): DoFn<KV<String, Array<Int>>, KV<String, String>>() {
+    @ProcessElement
+    fun processElement(c: ProcessContext) {
+        val docHash = c.element().key
+        val minhashes = c.element().value
+        partialHashes(m, minhashes).forEach {
+            c.output(KV.of(it.joinToString("-"), docHash))
+        }
     }
 }
 
@@ -81,17 +134,16 @@ class BigQueryMinHashTableFn: DoFn<KV<String, Array<Int>>, TableRow>() {
 }
 
 // BigQuery table with schema partial min-hash, array of document sha1 hashes matching that partial min-hash
-class BigQueryHashMapFn: DoFn<KV<String, Array<String>>, TableRow>() {
+class BigQueryHashMapFn: DoFn<KV<String, Iterable<String>>, TableRow>() {
     @ProcessElement
     fun processElement(c: ProcessContext) {
         val partialMinHash = c.element().key
-        val docHashes = c.element().value
+        val docHashes = c.element().value.toList().toTypedArray()
         c.output(TableRow()
             .set("partialMinHash", partialMinHash)
             .set("docHashes", docHashes))
     }
 }
-
 
 internal fun computeMinHashes(s: Set<Int>, minHashParams: HashFunctionParameters): Array<Int> {
     return minHashParams.params.map { param ->
