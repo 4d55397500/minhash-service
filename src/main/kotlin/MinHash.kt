@@ -9,7 +9,6 @@ import org.apache.beam.sdk.transforms.*
 import org.apache.beam.sdk.values.KV
 import org.apache.beam.sdk.values.PCollection
 import org.apache.beam.sdk.values.PCollectionList
-import org.apache.beam.sdk.values.TypeDescriptors
 import org.slf4j.LoggerFactory
 import java.util.*
 
@@ -34,17 +33,6 @@ fun mockHashFunctionParameters(n: Int): HashFunctionParameters {
         .map { Pair(1 + n * 367 - 1, 1 + n * 263 - 1) }
     return HashFunctionParameters(params)
 }
-//fun sourcesWithKeys(p: Pipeline, sources: List<Pair<String, String>>): PCollection<KV<String, String>> {
-//    return PCollectionList.of(sources.map { p
-//            .apply(FileIO.match().filepattern(it.second))
-//            .apply(FileIO.readMatches())
-//            .apply(
-//                MapElements
-//                .into(TypeDescriptors.kvs(TypeDescriptors.strings(), TypeDescriptors.strings()))
-//                    .via { f -> KV.of(it.first, f.readFullyAsUTF8String()) }
-//            )
-//    }).apply(Flatten.pCollections())
-//}
 
 fun sourcesWithSha1Key(p: Pipeline, sources: List<Pair<String, String>>): PCollection<KV<String, String>> {
     return PCollectionList.of(sources.mapIndexed { i,  it ->
@@ -81,21 +69,26 @@ class MinHashFn(
     }
 }
 
-/**
- * Writes min-hashes to BigQuery
- */
-class BigQueryFn(
-    private val projectId: String,
-    private val datasetName: String,
-    private val tableName: String
-): DoFn<KV<String, Array<Long>>, TableRow>() {
-
+// BigQuery table with schema document sha1 hash, minhashes (each minhash its own column)
+class BigQueryMinHashTableFn: DoFn<KV<String, Array<Int>>, TableRow>() {
     @ProcessElement
     fun processElement(c: ProcessContext) {
         c.output(TableRow()
             .set("key", c.element().key)
-            .set("minHashes", c.element().value)
+            .set("minHashes", c.element().value.map { it.toLong() }) // change to each min hash its own column
         )
+    }
+}
+
+// BigQuery table with schema partial min-hash, array of document sha1 hashes matching that partial min-hash
+class BigQueryHashMapFn: DoFn<KV<String, Array<String>>, TableRow>() {
+    @ProcessElement
+    fun processElement(c: ProcessContext) {
+        val partialMinHash = c.element().key
+        val docHashes = c.element().value
+        c.output(TableRow()
+            .set("partialMinHash", partialMinHash)
+            .set("docHashes", docHashes))
     }
 }
 
@@ -107,6 +100,10 @@ internal fun computeMinHashes(s: Set<Int>, minHashParams: HashFunctionParameters
             ?.toInt() ?: Int.MAX_VALUE
         minHash
     }.toTypedArray()
+}
+
+fun partialHashes(m: Int, minhashes: Array<Int>): List<Array<Int>> {
+    return (0 .. minhashes.size - m).map { minhashes.sliceArray(it until it + m) }
 }
 
 internal fun applyHashFunction(obj: Int, a: Int, b: Int) = (a * obj + b) % LARGE_PRIME
