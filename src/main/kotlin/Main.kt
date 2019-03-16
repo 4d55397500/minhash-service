@@ -62,9 +62,10 @@ object Main {
         handler = ResourceHandler(ClassPathResourceManager(Main::class.java.classLoader, "ui"), handler)
         handler = ResourceHandler(PathResourceManager(Paths.get("src/main/ui/build"), 0, true, true), handler)
         handler = PathHandler(handler)
-            .addPrefixPath("/api/v0", Handlers.routing()
-                .add("POST", "/pubsub/publish", prepareHandler(this::publish))
-                .add("POST", "/pubsub/push", prepareHandler(this::pubsubPush))
+            .addPrefixPath("/", Handlers.routing()
+                .add("POST", "/dataflow/submit", prepareHandler(this::submitDataflow))
+//                .add("POST", "/pubsub/publish", prepareHandler(this::publish))
+//                .add("POST", "/pubsub/push", prepareHandler(this::pubsubPush))
                 .setFallbackHandler(ResponseCodeHandler.HANDLE_404))
                 .addExactPath("/_ah/health", ResponseCodeHandler.HANDLE_200)
                 .addExactPath("/", RedirectHandler("/index.html"))
@@ -92,6 +93,17 @@ object Main {
             exchange.statusCode = 500
             exchange.responseSender.send(gson.toJson(mapOf("message" to ex.message)))
         }
+    }
+
+    private fun submitDataflow(exchange: HttpServerExchange) {
+        val requestBody = String(Base64.getDecoder().decode(exchange.inputStream.readBytes()))
+        val json = JsonParser().parse(requestBody).asJsonArray
+        val sources = json.map {
+            val key = it.asJsonObject.get("key").asString
+            val documentPath = it.asJsonObject.get("documentPath").asString
+            Pair(key, documentPath)
+        }
+        runPipeline(sources)
     }
 
     private fun publish(exchange: HttpServerExchange) {

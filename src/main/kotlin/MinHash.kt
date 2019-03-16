@@ -1,5 +1,6 @@
 import com.google.api.services.bigquery.model.TableReference
 import com.google.api.services.bigquery.model.TableRow
+import com.google.api.services.bigquery.model.TableSchema
 import com.google.common.hash.Hashing
 import org.apache.beam.sdk.Pipeline
 import org.apache.beam.sdk.io.FileIO
@@ -14,6 +15,7 @@ import org.slf4j.LoggerFactory
 import java.util.*
 
 
+const val BQ_PROJECT = ""
 const val BQ_DATASET = ""
 const val BQ_MINHASHES_TABLE = ""
 const val BQ_HASHMAP_TABLE = ""
@@ -25,7 +27,9 @@ val MAX_BYTE = Math.pow(2.0, 32.0).toInt()
 
 
 
-fun runPipeline(p: Pipeline, sources: List<Pair<String, String>>) {
+fun runPipeline(sources: List<Pair<String, String>>) {
+
+    val p = Pipeline.create()
 
     val sourcesCollection =
         sourcesWithSha1Key(p, sources)
@@ -36,8 +40,19 @@ fun runPipeline(p: Pipeline, sources: List<Pair<String, String>>) {
     val bqMinHashesTableRows =
         buildBigQueryMinHashTable(minHashesCollection)
 
+    bqHashTableRows.apply(BigQueryIO.writeTableRows()
+        .to("$BQ_PROJECT:$BQ_DATASET.$BQ_HASHMAP_TABLE")
+        .withSchema(TableSchema())
+        .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_TRUNCATE))
 
+    bqMinHashesTableRows.apply(BigQueryIO.writeTableRows()
+        .to("$BQ_PROJECT:$BQ_DATASET.$BQ_MINHASHES_TABLE")
+        .withSchema(TableSchema())
+        .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_TRUNCATE))
+
+    p.run()
 }
+
 
 data class HashFunctionParameters(val params: List<Pair<Int, Int>>)
 
@@ -81,12 +96,6 @@ fun buildBigQueryMinHashTable(minHashPCollection: PCollection<KV<String, Array<I
         .apply(ParDo.of(BigQueryMinHashTableFn()))
 }
 
-fun testGroupBy() {
-    val p = Pipeline.create()
-    val pcol1 = sourcesWithSha1Key(p, listOf())
-    val pcol2 = pcol1.apply(GroupByKey.create<String, String>())
-
-}
 
 // maps <doc hash, minhashes> -> multiple <partial min hash, doc hash>
 // each partial hash a dash-concatened string eg. 122,133,134 -> '122-133-134'
