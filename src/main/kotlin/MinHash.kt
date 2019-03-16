@@ -1,9 +1,12 @@
-import com.google.api.services.bigquery.model.TableReference
+
+import com.google.api.services.bigquery.model.TableFieldSchema
 import com.google.api.services.bigquery.model.TableRow
 import com.google.api.services.bigquery.model.TableSchema
 import com.google.common.hash.Hashing
+import org.apache.beam.repackaged.beam_runners_core_java.com.google.common.collect.ImmutableList
+import org.apache.beam.runners.dataflow.DataflowRunner
+import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions
 import org.apache.beam.sdk.Pipeline
-import org.apache.beam.sdk.io.FileIO
 import org.apache.beam.sdk.io.TextIO
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO
 import org.apache.beam.sdk.options.PipelineOptionsFactory
@@ -15,10 +18,10 @@ import org.slf4j.LoggerFactory
 import java.util.*
 
 
-const val BQ_PROJECT = ""
-const val BQ_DATASET = ""
-const val BQ_MINHASHES_TABLE = ""
-const val BQ_HASHMAP_TABLE = ""
+const val BQ_PROJECT = "default-168404"
+const val BQ_DATASET = "foodataset"
+const val BQ_MINHASHES_TABLE = "minhashes"
+const val BQ_HASHMAP_TABLE = "hashmap"
 
 
 const val LARGE_PRIME = 4294967311
@@ -29,22 +32,40 @@ val MAX_BYTE = Math.pow(2.0, 32.0).toInt()
 
 fun runPipeline(sources: List<Pair<String, String>>) {
 
-    val p = Pipeline.create()
+    val options = PipelineOptionsFactory.`as`(DataflowPipelineOptions::class.java)
+    options.project = BQ_PROJECT
+    options.stagingLocation = "gs://dataflowtemp/staging"
+    //options.tempLocation = "gs://dataflowtemp/"
+    options.runner = DataflowRunner::class.java
+
+    val p = Pipeline.create(options)
 
     val sourcesCollection =
         sourcesWithSha1Key(p, sources)
+
     val minHashesCollection =
         sourcesCollection.apply(ParDo.of(MinHashFn(4, 3)))
-    val bqHashTableRows =
-        buildBigQueryHashTable(minHashesCollection)
+//    val bqHashTableRows =
+//        buildBigQueryHashTable(minHashesCollection)
     val bqMinHashesTableRows =
         buildBigQueryMinHashTable(minHashesCollection)
 
-    bqHashTableRows.apply(BigQueryIO.writeTableRows()
-        .to("$BQ_PROJECT:$BQ_DATASET.$BQ_HASHMAP_TABLE")
-        .withSchema(TableSchema())
-        .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_TRUNCATE))
+//    bqHashTableRows.apply(BigQueryIO.writeTableRows()
+//        .to("$BQ_PROJECT:$BQ_DATASET.$BQ_HASHMAP_TABLE")
+//        .withSchema(TableSchema())
+//        .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_TRUNCATE))
 
+    val minHashSchema = TableSchema()
+        .setFields(ImmutableList.of(
+         TableFieldSchema()
+             .setName("key")
+             .setType("STRING")
+             .setMode("REQUIRED"),
+         TableFieldSchema()
+             .setName("minHashes")
+             .setType(("INT64"))
+             .setMode("REPEATED")
+        ))
     bqMinHashesTableRows.apply(BigQueryIO.writeTableRows()
         .to("$BQ_PROJECT:$BQ_DATASET.$BQ_MINHASHES_TABLE")
         .withSchema(TableSchema())
@@ -142,12 +163,14 @@ class BigQueryMinHashTableFn: DoFn<KV<String, Array<Int>>, TableRow>() {
     }
 }
 
+
+
 // BigQuery table with schema partial min-hash, array of document sha1 hashes matching that partial min-hash
 class BigQueryHashMapFn: DoFn<KV<String, Iterable<String>>, TableRow>() {
     @ProcessElement
     fun processElement(c: ProcessContext) {
         val partialMinHash = c.element().key
-        val docHashes = c.element().value.toList().toTypedArray()
+        val docHashes = c.element().value.iterator().asSequence().toList().toTypedArray()
         c.output(TableRow()
             .set("partialMinHash", partialMinHash)
             .set("docHashes", docHashes))
@@ -193,3 +216,10 @@ internal fun getModulo(n: Int, d: Int): Int {
     return n and (d-1)
 }
 
+fun main(args: Array<String>) {
+    val sources = listOf(
+        Pair("alice", "gs://sampledocs/alice.txt"),
+        Pair("pride", "gs://sampledocs/pride.txt")
+    )
+    runPipeline(sources)
+}

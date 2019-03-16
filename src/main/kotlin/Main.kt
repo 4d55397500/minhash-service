@@ -46,10 +46,10 @@ object Main {
     private val TOPIC = ""
 
     private val logger = LoggerFactory.getLogger(Main::class.java)
-
-    private val publisher = Publisher.newBuilder(
-        ProjectTopicName.of(ServiceOptions.getDefaultProjectId(), TOPIC))
-        .build()
+//
+//    private val publisher = Publisher.newBuilder(
+//        ProjectTopicName.of(ServiceOptions.getDefaultProjectId(), TOPIC))
+//        .build()
 
 
     /**
@@ -76,7 +76,7 @@ object Main {
             .setNext(handler)
 
         val port = 8080
-        println("Listening on port $port ...")
+        logger.info("Listening on port $port ...")
         Undertow.builder()
             .addHttpListener(port, "0.0.0.0")
             .setHandler(handler)
@@ -106,25 +106,25 @@ object Main {
         runPipeline(sources)
     }
 
-    private fun publish(exchange: HttpServerExchange) {
-        val inputStream = exchange.inputStream
-        val bytes = inputStream.readBytes()
-        val pubsubMessage = PubsubMessage
-            .newBuilder()
-            .setData(ByteString.copyFrom(bytes))
-            .build()
-        publisher.publish(pubsubMessage)
-        logger.info("Published message")
-    }
-
-    private fun pubsubPush(exchange: HttpServerExchange) {
-        val requestBody = String(Base64.getDecoder().decode(exchange.inputStream.readBytes()))
-        val json = JsonParser().parse(requestBody)
-        val key = json.asJsonObject.get("key").asString
-        val documentPath = json.asJsonObject.get("documentPath").asString
-        logger.info("Submitting message to dataflow")
-//        MinHash(key, documentPath).submit()
-    }
+//    private fun publish(exchange: HttpServerExchange) {
+//        val inputStream = exchange.inputStream
+//        val bytes = inputStream.readBytes()
+//        val pubsubMessage = PubsubMessage
+//            .newBuilder()
+//            .setData(ByteString.copyFrom(bytes))
+//            .build()
+//        publisher.publish(pubsubMessage)
+//        logger.info("Published message")
+//    }
+//
+//    private fun pubsubPush(exchange: HttpServerExchange) {
+//        val requestBody = String(Base64.getDecoder().decode(exchange.inputStream.readBytes()))
+//        val json = JsonParser().parse(requestBody)
+//        val key = json.asJsonObject.get("key").asString
+//        val documentPath = json.asJsonObject.get("documentPath").asString
+//        logger.info("Submitting message to dataflow")
+////        MinHash(key, documentPath).submit()
+//    }
 
 
 }
