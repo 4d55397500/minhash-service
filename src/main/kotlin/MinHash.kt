@@ -41,14 +41,13 @@ fun runPipeline(sources: List<Pair<String, String>>) {
     val options = PipelineOptionsFactory.`as`(DataflowPipelineOptions::class.java)
     options.project = BQ_PROJECT
     options.stagingLocation = "gs://dataflowtemp/staging"
-    //options.tempLocation = "gs://dataflowtemp/"
     options.runner = DataflowRunner::class.java
     options.stableUniqueNames = PipelineOptions.CheckEnabled.OFF
 
     val p = Pipeline.create(options)
 
-    val sourcesCollection =
-        sourcesWithSha1Key(p, sources)
+    val sourcesCollection = sourcesWithOriginalKey(p, sources)
+
 
     val minHashesCollection =
         sourcesCollection.apply(ParDo.of(MinHashFn(4, 3)))
@@ -97,6 +96,7 @@ fun mockHashFunctionParameters(n: Int): HashFunctionParameters {
     return HashFunctionParameters(params)
 }
 
+@Deprecated("using provided document key instead")
 fun sourcesWithSha1Key(p: Pipeline, sources: List<Pair<String, String>>): PCollection<KV<String, String>> {
     return PCollectionList.of(sources.mapIndexed { i,  it ->
         p.apply("readSources_$i", TextIO.read().from(it.second))
