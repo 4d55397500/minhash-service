@@ -68,7 +68,7 @@ fun runPipeline(sources: List<Pair<String, String>>) {
         ))
     bqMinHashesTableRows.apply(BigQueryIO.writeTableRows()
         .to("$BQ_PROJECT:$BQ_DATASET.$BQ_MINHASHES_TABLE")
-        .withSchema(TableSchema())
+        .withSchema(minHashSchema)
         .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_TRUNCATE))
 
     p.run()
