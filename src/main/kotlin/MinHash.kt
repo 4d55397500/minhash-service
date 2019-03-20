@@ -4,17 +4,23 @@ import com.google.api.services.bigquery.model.TableRow
 import com.google.api.services.bigquery.model.TableSchema
 import com.google.common.hash.Hashing
 import org.apache.beam.repackaged.beam_runners_core_java.com.google.common.collect.ImmutableList
+import org.apache.beam.repackaged.beam_runners_direct_java.runners.core.ReduceFn
 import org.apache.beam.runners.dataflow.DataflowRunner
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions
 import org.apache.beam.sdk.Pipeline
+import org.apache.beam.sdk.io.FileIO
+import org.apache.beam.sdk.io.FileSystems
 import org.apache.beam.sdk.io.TextIO
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO
+import org.apache.beam.sdk.options.PipelineOptions
 import org.apache.beam.sdk.options.PipelineOptionsFactory
 import org.apache.beam.sdk.transforms.*
 import org.apache.beam.sdk.values.KV
 import org.apache.beam.sdk.values.PCollection
 import org.apache.beam.sdk.values.PCollectionList
 import org.slf4j.LoggerFactory
+import java.nio.channels.Channels
+import java.nio.charset.Charset
 import java.util.*
 
 
@@ -37,6 +43,7 @@ fun runPipeline(sources: List<Pair<String, String>>) {
     options.stagingLocation = "gs://dataflowtemp/staging"
     //options.tempLocation = "gs://dataflowtemp/"
     options.runner = DataflowRunner::class.java
+    options.stableUniqueNames = PipelineOptions.CheckEnabled.OFF
 
     val p = Pipeline.create(options)
 
@@ -95,6 +102,26 @@ fun sourcesWithSha1Key(p: Pipeline, sources: List<Pair<String, String>>): PColle
         p.apply("readSources_$i", TextIO.read().from(it.second))
          .apply("addSha256Key_$i", ParDo.of(Sha256HashFn()))
     }).apply("flatten", Flatten.pCollections())
+}
+
+fun sourcesWithOriginalKey(p: Pipeline, sources: List<Pair<String, String>>): PCollection<KV<String, String>> {
+    return PCollectionList.of(sources.mapIndexed { i, it ->
+        val documentKey = it.first
+        val documentPath = it.second
+        p.apply("readFiles_$i", FileIO.match().filepattern(documentPath))
+            .apply("readMatches_$i", FileIO.readMatches())
+            .apply("readFiles_$i", ParDo.of(FileReaderFn(documentKey)))
+    }).apply("flatten", Flatten.pCollections())
+}
+
+class FileReaderFn(private val documentKey: String): DoFn<FileIO.ReadableFile, KV<String, String>>() {
+    @ProcessElement
+    fun processElement(c: ProcessContext) {
+        val readableFile = c.element()
+        val bytes = readableFile.readFullyAsBytes()
+        val output = KV.of(documentKey, readableFile.readFullyAsUTF8String())
+        c.output(KV.of(documentKey, readableFile.readFullyAsUTF8String()))
+    }
 }
 
 
