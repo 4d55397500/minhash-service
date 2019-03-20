@@ -1,3 +1,7 @@
+import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions
+import org.apache.beam.sdk.io.FileIO
+import org.apache.beam.sdk.options.PipelineOptions
+import org.apache.beam.sdk.options.PipelineOptionsFactory
 import org.apache.beam.sdk.testing.PAssert
 import org.apache.beam.sdk.testing.TestPipeline
 import org.apache.beam.sdk.transforms.DoFnTester
@@ -22,7 +26,9 @@ class MinHashTest {
 
     @Test
     fun `end-to-end dataflow pipeline test behaves correctly`() {
-        val p = TestPipeline.create().enableAbandonedNodeEnforcement(false)
+        val options = PipelineOptionsFactory.`as`(DataflowPipelineOptions::class.java)
+        options.stableUniqueNames = PipelineOptions.CheckEnabled.OFF
+        val p = TestPipeline.create(options)
         val pcol1 = sourcesWithSha1Key(p, sampleSourcePaths.toList())
         val minHashFn = MinHashFn(3, 2, mock = true)
         val pcol2 = pcol1.apply(ParDo.of(minHashFn))
@@ -43,6 +49,18 @@ class MinHashTest {
         assert (minHashes.toList() == listOf(9037534, 9037534)) {
             "incorrect minhashes"
         }
+    }
+
+    @Test
+    fun `minhash FileReaderFn operates correctly`() {
+        val options = PipelineOptionsFactory.`as`(DataflowPipelineOptions::class.java)
+        options.stableUniqueNames = PipelineOptions.CheckEnabled.OFF
+        val p = TestPipeline.create(options)
+        val pcol1 = sourcesWithOriginalKey(p, sampleSourcePaths.toList())
+        PAssert.that(pcol1).containsInAnyOrder(
+            KV.of("doc1", "this is a foo text\n"),
+            KV.of("doc2", "this is a bar text\n"))
+        p.run()
     }
 
     @Test
