@@ -8,6 +8,7 @@ import org.apache.beam.repackaged.beam_runners_direct_java.runners.core.ReduceFn
 import org.apache.beam.runners.dataflow.DataflowRunner
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions
 import org.apache.beam.sdk.Pipeline
+import org.apache.beam.sdk.coders.NullableCoder
 import org.apache.beam.sdk.io.FileIO
 import org.apache.beam.sdk.io.FileSystems
 import org.apache.beam.sdk.io.TextIO
@@ -18,6 +19,9 @@ import org.apache.beam.sdk.transforms.*
 import org.apache.beam.sdk.values.KV
 import org.apache.beam.sdk.values.PCollection
 import org.apache.beam.sdk.values.PCollectionList
+import org.apache.beam.sdk.values.TypeDescriptor
+import org.apache.beam.sdk.values.TypeDescriptors.iterables
+import org.apache.beam.sdk.values.TypeDescriptors.kvs
 import org.slf4j.LoggerFactory
 import java.nio.channels.Channels
 import java.nio.charset.Charset
@@ -51,15 +55,15 @@ fun runPipeline(sources: List<Pair<String, String>>) {
 
     val minHashesCollection =
         sourcesCollection.apply(ParDo.of(MinHashFn(4, 3)))
-//    val bqHashTableRows =
-//        buildBigQueryHashTable(minHashesCollection)
+    val bqHashTableRows =
+        buildBigQueryHashTable(minHashesCollection)
     val bqMinHashesTableRows =
         buildBigQueryMinHashTable(minHashesCollection)
 
-//    bqHashTableRows.apply(BigQueryIO.writeTableRows()
-//        .to("$BQ_PROJECT:$BQ_DATASET.$BQ_HASHMAP_TABLE")
-//        .withSchema(TableSchema())
-//        .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_TRUNCATE))
+    bqHashTableRows.apply(BigQueryIO.writeTableRows()
+        .to("$BQ_PROJECT:$BQ_DATASET.$BQ_HASHMAP_TABLE")
+        .withSchema(TableSchema())
+        .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_TRUNCATE))
 
     val minHashSchema = TableSchema()
         .setFields(ImmutableList.of(
@@ -118,8 +122,6 @@ class FileReaderFn(private val documentKey: String): DoFn<FileIO.ReadableFile, K
     @ProcessElement
     fun processElement(c: ProcessContext) {
         val readableFile = c.element()
-        val bytes = readableFile.readFullyAsBytes()
-        val output = KV.of(documentKey, readableFile.readFullyAsUTF8String())
         c.output(KV.of(documentKey, readableFile.readFullyAsUTF8String()))
     }
 }
@@ -133,16 +135,18 @@ class Sha256HashFn: DoFn<String, KV<String, String>>() {
 }
 
 fun buildBigQueryHashTable(minHashPCollection: PCollection<KV<String, Array<Int>>>): PCollection<TableRow> {
-    return minHashPCollection
+    val pcol = minHashPCollection
         .apply(ParDo.of(PartialHashesFn(3)))
-        .apply(GroupByKey.create<String, String>())
-        .apply(ParDo.of(BigQueryHashMapFn()))
+        .apply(Combine.perKey<String, String, Array<String>>(CombineDocHashes()))
+    return pcol.apply(ParDo.of(BigQueryHashMapFn()))
 }
+
 
 fun buildBigQueryMinHashTable(minHashPCollection: PCollection<KV<String, Array<Int>>>): PCollection<TableRow> {
     return minHashPCollection
         .apply(ParDo.of(BigQueryMinHashTableFn()))
 }
+
 
 
 // maps <doc hash, minhashes> -> multiple <partial min hash, doc hash>
@@ -156,6 +160,38 @@ class PartialHashesFn(private val m: Int): DoFn<KV<String, Array<Int>>, KV<Strin
             c.output(KV.of(it.joinToString("-"), docHash))
         }
     }
+}
+
+class CombineDocHashes: Combine.CombineFn<String, MutableList<String>, Array<String>>() {
+    override fun createAccumulator(): MutableList<String> {
+        return mutableListOf()
+    }
+
+    override fun addInput(accumulator: MutableList<String>?, input: String?): MutableList<String> {
+       if (accumulator != null) {
+           accumulator.add(input!!)
+           return accumulator
+       } else {
+           return mutableListOf()
+       }
+    }
+
+    override fun mergeAccumulators(accumulators: MutableIterable<MutableList<String>>?): MutableList<String> {
+        if (accumulators != null) {
+            return accumulators.toList().flatMap { it }.toMutableList()
+        } else {
+            return mutableListOf()
+        }
+    }
+
+    override fun extractOutput(accumulator: MutableList<String>?): Array<String> {
+        if (accumulator != null) {
+            return accumulator.sorted().toTypedArray()
+        } else {
+            return arrayOf()
+        }
+    }
+
 }
 
 // maps source strings to min hashes
@@ -191,13 +227,12 @@ class BigQueryMinHashTableFn: DoFn<KV<String, Array<Int>>, TableRow>() {
 }
 
 
-
 // BigQuery table with schema partial min-hash, array of document sha1 hashes matching that partial min-hash
-class BigQueryHashMapFn: DoFn<KV<String, Iterable<String>>, TableRow>() {
+class BigQueryHashMapFn: DoFn<KV<String, Array<String>>, TableRow>() {
     @ProcessElement
     fun processElement(c: ProcessContext) {
         val partialMinHash = c.element().key
-        val docHashes = c.element().value.iterator().asSequence().toList().toTypedArray()
+        val docHashes = c.element().value.toList()
         c.output(TableRow()
             .set("partialMinHash", partialMinHash)
             .set("docHashes", docHashes))
@@ -244,6 +279,9 @@ internal fun getModulo(n: Int, d: Int): Int {
 }
 
 fun main(args: Array<String>) {
+    val s = listOf("foo").asIterable()
+
+
     val sources = listOf(
         Pair("alice", "gs://sampledocs/alice.txt"),
         Pair("pride", "gs://sampledocs/pride.txt")
