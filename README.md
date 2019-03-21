@@ -8,9 +8,27 @@ A large scale min-hashing service for documents. Currently a Google Cloud Datafl
 ### Background
 See the wikipedia article on min-hashing.
 
+### Design
+
+Currently the two BigQuery tables look like below. With appropriate SQL queries (to be added) one can find efficiently find similar documents.
+
+
+One with the min hashes
+
+<img src="./minhashes.png" width="200">
+
+
+The other with min hash projections for looking up neighbors (similar documents)
+
+<img src="./partialhashes.png" width="400">
+
+(nice architecture doodle goes here)
+
 ### Run
 
-nice diagram goes here
+instructions to be added
+
+
 
 
 
