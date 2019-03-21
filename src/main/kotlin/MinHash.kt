@@ -283,9 +283,15 @@ internal fun getModulo(n: Int, d: Int): Int {
 
 fun main(args: Array<String>) {
 
-    val sources = listOf(
-        Pair("alice", "gs://sampledocs/alice.txt"),
-        Pair("pride", "gs://sampledocs/pride.txt")
+    val localSources = listOf(
+        Pair("doc1", "gs://sampledocs/doc1.txt"),
+        Pair("doc2", "gs://sampledocs/doc2.txt"),
+        Pair("doc3", "gs://sampledocs/doc3.txt")
     )
-    runPipeline(sources)
+
+//    val sources = listOf(
+//        Pair("alice", "gs://sampledocs/alice.txt"),
+//        Pair("pride", "gs://sampledocs/pride.txt")
+//    )
+    runPipeline(localSources)
 }
