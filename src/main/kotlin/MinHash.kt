@@ -4,13 +4,10 @@ import com.google.api.services.bigquery.model.TableRow
 import com.google.api.services.bigquery.model.TableSchema
 import com.google.common.hash.Hashing
 import org.apache.beam.repackaged.beam_runners_core_java.com.google.common.collect.ImmutableList
-import org.apache.beam.repackaged.beam_runners_direct_java.runners.core.ReduceFn
 import org.apache.beam.runners.dataflow.DataflowRunner
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions
 import org.apache.beam.sdk.Pipeline
-import org.apache.beam.sdk.coders.NullableCoder
 import org.apache.beam.sdk.io.FileIO
-import org.apache.beam.sdk.io.FileSystems
 import org.apache.beam.sdk.io.TextIO
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO
 import org.apache.beam.sdk.options.PipelineOptions
@@ -19,12 +16,6 @@ import org.apache.beam.sdk.transforms.*
 import org.apache.beam.sdk.values.KV
 import org.apache.beam.sdk.values.PCollection
 import org.apache.beam.sdk.values.PCollectionList
-import org.apache.beam.sdk.values.TypeDescriptor
-import org.apache.beam.sdk.values.TypeDescriptors.iterables
-import org.apache.beam.sdk.values.TypeDescriptors.kvs
-import org.slf4j.LoggerFactory
-import java.nio.channels.Channels
-import java.nio.charset.Charset
 import java.util.*
 
 
@@ -60,9 +51,21 @@ fun runPipeline(sources: List<Pair<String, String>>) {
     val bqMinHashesTableRows =
         buildBigQueryMinHashTable(minHashesCollection)
 
+    val hashTableSchema = TableSchema()
+        .setFields(ImmutableList.of(
+            TableFieldSchema()
+                .setName("partialMinHash")
+                .setType("STRING")
+                .setMode("REQUIRED"),
+            TableFieldSchema()
+                .setName("docHashes")
+                .setType("STRING")
+                .setMode("REPEATED")
+        ))
+
     bqHashTableRows.apply(BigQueryIO.writeTableRows()
         .to("$BQ_PROJECT:$BQ_DATASET.$BQ_HASHMAP_TABLE")
-        .withSchema(TableSchema())
+        .withSchema(hashTableSchema)
         .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_TRUNCATE))
 
     val minHashSchema = TableSchema()
@@ -279,8 +282,6 @@ internal fun getModulo(n: Int, d: Int): Int {
 }
 
 fun main(args: Array<String>) {
-    val s = listOf("foo").asIterable()
-
 
     val sources = listOf(
         Pair("alice", "gs://sampledocs/alice.txt"),
