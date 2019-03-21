@@ -4,6 +4,8 @@ import org.apache.beam.sdk.options.PipelineOptions
 import org.apache.beam.sdk.options.PipelineOptionsFactory
 import org.apache.beam.sdk.testing.PAssert
 import org.apache.beam.sdk.testing.TestPipeline
+import org.apache.beam.sdk.transforms.Combine
+import org.apache.beam.sdk.transforms.Create
 import org.apache.beam.sdk.transforms.DoFnTester
 import org.apache.beam.sdk.transforms.ParDo
 import org.apache.beam.sdk.values.KV
@@ -41,6 +43,47 @@ class MinHashTest {
         )
         p.run()
     }
+
+    @Test
+    fun `BigQuery hash table pcollection formed without error`() {
+        val options = PipelineOptionsFactory.`as`(DataflowPipelineOptions::class.java)
+        options.stableUniqueNames = PipelineOptions.CheckEnabled.OFF
+        val p = TestPipeline.create(options)
+        val testInputs = listOf(KV.of("key1", arrayOf(1, 2)),
+            KV.of("key2", arrayOf(3, 4)))
+        val pcol = p.apply(Create.of(testInputs))
+        buildBigQueryHashTable(pcol)
+        p.run()
+    }
+
+    @Test
+    fun `test buildBigQueryHashTableFn`() {
+        val options = PipelineOptionsFactory.`as`(DataflowPipelineOptions::class.java)
+        options.stableUniqueNames = PipelineOptions.CheckEnabled.OFF
+        val p = TestPipeline.create(options)
+        val testInputs = listOf(KV.of("key1", arrayOf("foo", "bar")),
+            KV.of("key2", arrayOf("foo", "bar")))
+        val pcol = p.apply(Create.of(testInputs))
+        pcol.apply(ParDo.of(BigQueryHashMapFn()))
+        p.run()
+    }
+
+    @Test
+    fun `test combine by key works as expected`() {
+        val options = PipelineOptionsFactory.`as`(DataflowPipelineOptions::class.java)
+        options.stableUniqueNames = PipelineOptions.CheckEnabled.OFF
+        val p = TestPipeline.create(options)
+        val testInputs = listOf(KV.of("key1", "foo"),
+            KV.of("key1", "bar"))
+        val pcol = p.apply(Create.of(testInputs))
+        val output = pcol.apply(Combine.perKey<String, String, Array<String>>(CombineDocHashes()))
+        PAssert.that(output)
+            .containsInAnyOrder(
+                KV.of("key1", arrayOf("bar", "foo"))
+            )
+        p.run()
+    }
+
 
     @Test
     fun `the minhash operation produces proper behavior`() {
