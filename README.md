@@ -29,7 +29,9 @@ The other with min hash projections for looking up neighbors (similar documents)
 instructions to be added
 
 
+### API
 
+to be added
 
 
 
