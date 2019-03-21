@@ -30,6 +30,62 @@ val RNG = Random(System.currentTimeMillis())
 val MAX_BYTE = Math.pow(2.0, 32.0).toInt()
 
 
+fun runPipelineMockDocs() {
+
+    val options = PipelineOptionsFactory.`as`(DataflowPipelineOptions::class.java)
+    options.project = BQ_PROJECT
+    options.stagingLocation = "gs://dataflowtemp/staging"
+    options.runner = DataflowRunner::class.java
+    options.stableUniqueNames = PipelineOptions.CheckEnabled.OFF
+
+    val p = Pipeline.create(options)
+
+    val sourcesCollection = p.apply(Create.of((1..1000).map {
+        KV.of("doc$it", "This is a sample tex$it a lot of text and some of who knows what foo${it}bar")
+    }))
+
+    val minHashesCollection =
+        sourcesCollection.apply(ParDo.of(MinHashFn(20, 3)))
+    val bqHashTableRows =
+        buildBigQueryHashTable(minHashesCollection)
+    val bqMinHashesTableRows =
+        buildBigQueryMinHashTable(minHashesCollection)
+
+    val hashTableSchema = TableSchema()
+        .setFields(ImmutableList.of(
+            TableFieldSchema()
+                .setName("partialMinHash")
+                .setType("STRING")
+                .setMode("REQUIRED"),
+            TableFieldSchema()
+                .setName("docHashes")
+                .setType("STRING")
+                .setMode("REPEATED")
+        ))
+
+    bqHashTableRows.apply(BigQueryIO.writeTableRows()
+        .to("$BQ_PROJECT:$BQ_DATASET.$BQ_HASHMAP_TABLE")
+        .withSchema(hashTableSchema)
+        .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_TRUNCATE))
+
+    val minHashSchema = TableSchema()
+        .setFields(ImmutableList.of(
+            TableFieldSchema()
+                .setName("key")
+                .setType("STRING")
+                .setMode("REQUIRED"),
+            TableFieldSchema()
+                .setName("minHashes")
+                .setType(("INT64"))
+                .setMode("REPEATED")
+        ))
+    bqMinHashesTableRows.apply(BigQueryIO.writeTableRows()
+        .to("$BQ_PROJECT:$BQ_DATASET.$BQ_MINHASHES_TABLE")
+        .withSchema(minHashSchema)
+        .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_TRUNCATE))
+
+    p.run()
+}
 
 fun runPipeline(sources: List<Pair<String, String>>) {
 
@@ -43,9 +99,8 @@ fun runPipeline(sources: List<Pair<String, String>>) {
 
     val sourcesCollection = sourcesWithOriginalKey(p, sources)
 
-
     val minHashesCollection =
-        sourcesCollection.apply(ParDo.of(MinHashFn(4, 3)))
+        sourcesCollection.apply(ParDo.of(MinHashFn(10, 2)))
     val bqHashTableRows =
         buildBigQueryHashTable(minHashesCollection)
     val bqMinHashesTableRows =
@@ -86,6 +141,7 @@ fun runPipeline(sources: List<Pair<String, String>>) {
 
     p.run()
 }
+
 
 
 data class HashFunctionParameters(val params: List<Pair<Int, Int>>)
@@ -251,6 +307,10 @@ internal fun computeMinHashes(s: Set<Int>, minHashParams: HashFunctionParameters
     }.toTypedArray()
 }
 
+internal fun docToMinHash(doc: String, k: Int, minHashParams: HashFunctionParameters): Array<Int> {
+    return computeMinHashes(computeShingles(doc, k), minHashParams)
+}
+
 fun partialHashes(m: Int, minhashes: Array<Int>): List<Array<Int>> {
     return (0 .. minhashes.size - m).map { minhashes.sliceArray(it until it + m) }
 }
@@ -293,5 +353,6 @@ fun main(args: Array<String>) {
 //        Pair("alice", "gs://sampledocs/alice.txt"),
 //        Pair("pride", "gs://sampledocs/pride.txt")
 //    )
-    runPipeline(localSources)
+    //runPipeline(localSources)
+    runPipelineMockDocs()
 }

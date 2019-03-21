@@ -1,13 +1,9 @@
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions
-import org.apache.beam.sdk.io.FileIO
 import org.apache.beam.sdk.options.PipelineOptions
 import org.apache.beam.sdk.options.PipelineOptionsFactory
 import org.apache.beam.sdk.testing.PAssert
 import org.apache.beam.sdk.testing.TestPipeline
-import org.apache.beam.sdk.transforms.Combine
-import org.apache.beam.sdk.transforms.Create
-import org.apache.beam.sdk.transforms.DoFnTester
-import org.apache.beam.sdk.transforms.ParDo
+import org.apache.beam.sdk.transforms.*
 import org.apache.beam.sdk.values.KV
 import org.junit.Test
 
@@ -24,6 +20,56 @@ class MinHashTest {
             "doc1" to "src/main/resources/foo.txt",
             "doc2" to "src/main/resources/bar.txt"
         )
+    }
+
+    @Test
+    fun `minhash locality`() {
+        val minhashes = (1..10).map {
+            val doc = "This is a sample tex$it a lot of text and some of who knows what foo${it}bar"
+            docToMinHash(doc, 3, mockHashFunctionParameters(20))
+        }
+        var ctEqual = 0
+        minhashes.flatMap { mh -> minhashes.map { Pair(it, mh)}.filter { !it.first.equals(it.second) } }
+        .map {
+            val a = it.first.toSet()
+            val b = it.second.toSet()
+            a.intersect(b).size * 1.0 / a.union(b).size
+        }.forEach {
+            if (it == 1.0) {
+                ctEqual += 1
+            }
+        }
+        assert (ctEqual > 50)
+
+    }
+
+    @Test
+    fun `verify minhashfn preserves locality`() {
+        val options = PipelineOptionsFactory.`as`(DataflowPipelineOptions::class.java)
+        options.stableUniqueNames = PipelineOptions.CheckEnabled.OFF
+        val p = TestPipeline.create(options)
+        val input = p.apply(Create.of(listOf(KV.of("key1", "This is a text"),
+            KV.of("key2", "This is a text"))))
+        val minHashFn = MinHashFn(3, 2, mock = true)
+        val output = input.apply(ParDo.of(minHashFn))
+        val correctMinHashes = arrayOf(-1233248911, -1233248911, -1233248911)
+        // checks operation is idempotent
+        PAssert.that(output).containsInAnyOrder(
+            KV.of("key1", correctMinHashes),
+            KV.of("key2", correctMinHashes))
+
+        val input2 = p.apply(Create.of(listOf(
+            KV.of("key1", "This is a somewhat long text about something or other"),
+            KV.of("key2", "This is a somewhat kind of long text about something or another"))))
+        val minHashFn2 = MinHashFn(10, 2, mock = true)
+        val output2 = input2.apply(ParDo.of(minHashFn2))
+
+        // checks locality
+        val minhashes2 = arrayOf(-1768377226, -1768377226, -1768377226, -1768377226, -1768377226, -1768377226, -1768377226, -1768377226, -1768377226, -1768377226)
+        PAssert.that(output2).containsInAnyOrder(
+            KV.of("key1", minhashes2),
+            KV.of("key2", minhashes2))
+        p.run()
     }
 
     @Test
