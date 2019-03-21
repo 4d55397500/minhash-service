@@ -15,12 +15,12 @@ Currently the two BigQuery tables look like below. With appropriate SQL queries 
 
 One with the min hashes
 
-<img src="./minhashes.png" width="200">
+<img src="minhashes.png" width="200"/>
 
 
 The other with min hash projections for looking up neighbors (similar documents)
 
-<img src="./partialhashes.png" width="400">
+<img src="partialhashes.png" width="400"/>
 
 (nice architecture doodle goes here)
 
