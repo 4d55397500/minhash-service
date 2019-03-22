@@ -15,7 +15,7 @@ repositories {
 dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
     compile 'com.google.cloud:google-cloud-pubsub:1.53.0'
-    compile 'io.undertow:undertow-core:[1.4.21.Final]'
+    compile 'io.javalin:javalin:2.7.0'
     compile group: 'com.google.cloud.dataflow', name: 'google-cloud-dataflow-java-sdk-all', version: '2.5.0'
     compile group: 'com.google.cloud', name: 'google-cloud-bigquery', version: '1.53.0'
     compile group: 'org.slf4j', name: 'slf4j-simple', version: '1.6.1'
