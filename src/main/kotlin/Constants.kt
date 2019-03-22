@@ -1,7 +1,7 @@
 import java.util.*
 
-const val BQ_PROJECT = "default-168404"
-const val BQ_DATASET = "foodataset"
+const val BQ_PROJECT = ""
+const val BQ_DATASET = ""
 const val BQ_MINHASHES_TABLE = "minhashes"
 const val BQ_HASHMAP_TABLE = "hashmap"
 
