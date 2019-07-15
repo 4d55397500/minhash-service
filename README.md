@@ -3,12 +3,12 @@ min-hash
 
 [![Build Status](https://travis-ci.org/4d55397500/dataflow-minhash.svg?branch=master)](https://travis-ci.org/4d55397500/minhash-service)
 
-A large scale min-hashing service for documents. Currently a Google Cloud Dataflow job converts to documents to minhash representations and stores those representations along with partial projections for 'hashmap lookup' in BigQuery tables. 
+A large scale min-hashing service for documents. A Google Cloud Dataflow job converts to documents to minhash representations and stores those representations along with partial projections in BigQuery tables. Queries against those partial projections give similarity scores.
 
 A form of [nearest neighbor search](https://github.com/4d55397500/minhash-service/blob/9d9dae3508e8859527f47f67de27fc4bc2e19f29/src/main/kotlin/LocalSearch.kt#L14-L31) is implemented directly in BigQuery. Typically in nearest neighbor search, a hashmap maps each document into one bucket for each partial hash in the minhash representation. In this case, we mimic the hashmap in the BigQuery column store representation by a join, filter and then group by. 
 
 ### *Disclaimer*
-As of 2019 document similarity search is much better had by training embeddings and using an efficient nearest neighbors index on the vector representations. This project rather is intended to demonstrate the use of BigQuery and Dataflow for large scale operations-free min-hashing.
+This system demonstrates large scale minhashing for document lookup using Google's Dataflow and BigQuery. If you wish to use deep learning you can train embeddings and use a nearest neighbor index on the vector representations for lookup.
 
 ### Background
 See the wikipedia [article](https://en.wikipedia.org/wiki/MinHash) on min-hashing.
