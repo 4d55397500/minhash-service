@@ -14,16 +14,7 @@ This system demonstrates large scale minhashing for document lookup using Google
 See the wikipedia [article](https://en.wikipedia.org/wiki/MinHash) on min-hashing.
 
 ### Design
-[Shingles](https://github.com/4d55397500/minhash-service/blob/9d9dae3508e8859527f47f67de27fc4bc2e19f29/src/main/kotlin/MinHash.kt#L313-L318) are computed for each document, compressed to a [4-byte representation](https://github.com/4d55397500/minhash-service/blob/9d9dae3508e8859527f47f67de27fc4bc2e19f29/src/main/kotlin/MinHash.kt#L324-L326). Minhashes are computed and stored along with a 'hashmap' reprentation in two BigQuery tables, as shown below.
-
-One with the min hashes
-
-<img src="minhashes.png" width="200"/>
-
-
-The other with min hash projections for looking up neighbors (similar documents)
-
-<img src="partialhashes.png" width="400"/>
+[Shingles](https://github.com/4d55397500/minhash-service/blob/9d9dae3508e8859527f47f67de27fc4bc2e19f29/src/main/kotlin/MinHash.kt#L313-L318) are computed for each document, compressed to a [4-byte representation](https://github.com/4d55397500/minhash-service/blob/9d9dae3508e8859527f47f67de27fc4bc2e19f29/src/main/kotlin/MinHash.kt#L324-L326). Minhashes are computed and stored along with a 'hashmap' reprentation in two BigQuery tables.
 
 (nice architecture doodle goes here)
 
