@@ -18,10 +18,5 @@ See the wikipedia [article](https://en.wikipedia.org/wiki/MinHash) on min-hashin
 
 (nice architecture doodle goes here)
 
-### Run
-
-instructions to be added
-
-
 ### API
 See [api doc](docs/api.md)
