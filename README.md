@@ -1,4 +1,4 @@
-min-hash
+minhash-service
 ----
 
 [![Build Status](https://travis-ci.org/4d55397500/dataflow-minhash.svg?branch=master)](https://travis-ci.org/4d55397500/minhash-service)
