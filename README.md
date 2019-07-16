@@ -1,7 +1,9 @@
 minhash-service
 ----
 
+
 [![Build Status](https://travis-ci.org/4d55397500/dataflow-minhash.svg?branch=master)](https://travis-ci.org/4d55397500/minhash-service)
+
 
 A large scale min-hashing service for documents. A Google Cloud Dataflow job converts to documents to minhash representations and stores those representations along with partial projections in BigQuery tables. Queries against those partial projections give similarity scores.
 
@@ -11,9 +13,10 @@ A form of [nearest neighbor search](https://github.com/4d55397500/minhash-servic
 See the wikipedia [article](https://en.wikipedia.org/wiki/MinHash) on min-hashing.
 
 ### Design
-[Shingles](https://github.com/4d55397500/minhash-service/blob/9d9dae3508e8859527f47f67de27fc4bc2e19f29/src/main/kotlin/MinHash.kt#L313-L318) are computed for each document, compressed to a [4-byte representation](https://github.com/4d55397500/minhash-service/blob/9d9dae3508e8859527f47f67de27fc4bc2e19f29/src/main/kotlin/MinHash.kt#L324-L326). Minhashes are computed and stored along with a 'hashmap' reprentation in two BigQuery tables.
+[Shingles](https://github.com/4d55397500/minhash-service/blob/9d9dae3508e8859527f47f67de27fc4bc2e19f29/src/main/kotlin/MinHash.kt#L313-L318) are computed for each document, compressed to a [4-byte representation](https://github.com/4d55397500/minhash-service/blob/9d9dae3508e8859527f47f67de27fc4bc2e19f29/src/main/kotlin/MinHash.kt#L324-L326). Minhashes are computed and stored along with a 'hashmap' reprentation in two BigQuery tables. These two tables facilitate a nearest neighbor lookup over the minhash representation.
 
-(nice architecture doodle goes here)
+![Architecture](./minhash_architecture.png)
+
 
 ### API
 See [api doc](docs/api.md)
