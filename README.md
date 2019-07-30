@@ -24,7 +24,7 @@ See the [API doc](docs/api.md).
 ### To Do
 Add a UI.
 
-#### *Disclaimer*
-This system is intended to demonstrate minhashing for large scale document search. If you wish to use deep learning instead you can train embeddings and use a nearest neighbor index on the vector representations for lookup.
+#### *Note*
+This system demonstrates minhashing for large scale document search. A modern approach with deep learning can be done by training embeddings and using a nearest neighbor index on the vector representations for lookup.
 
 
