@@ -21,7 +21,10 @@ A Google Cloud Dataflow job converts documents to minhash representations and st
 ### API
 See the [API doc](docs/api.md).
 
-### *Disclaimer*
+### To Do
+Add a UI.
+
+#### *Disclaimer*
 This system is intended to demonstrate minhashing for large scale document search. If you wish to use deep learning instead you can train embeddings and use a nearest neighbor index on the vector representations for lookup.
 
 
