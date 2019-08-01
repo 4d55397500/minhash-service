@@ -21,6 +21,13 @@ A Google Cloud Dataflow job converts documents to minhash representations and st
 ### API
 See the [API doc](docs/api.md).
 
+### Running tests
+```
+ 
+./gradlew test
+
+```
+
 ### To Do
 Add a UI.
 
