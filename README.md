@@ -19,7 +19,12 @@ A Google Cloud Dataflow job converts documents to minhash representations and st
 
 
 ### API
-See the [API doc](docs/api.md).
+There are two primary api operations: 
+ 1) converting documents to minhashes and persisting
+ 2) nearest neighbor lookup for each of a given subset of documents
+
+ See the [API doc](docs/api.md).
+ 
 
 ### Running tests
 ```
