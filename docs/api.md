@@ -1,6 +1,9 @@
 API
 ----
+ 
+## /dataflow
 
+ Initiates a Cloud Dataflow job extracting documents from Cloud Storage to minhash representations and persisting in two tables in BigQuery.
 
 * **URL**
 
@@ -43,7 +46,9 @@ API
 	```
 * **Response:**
 
---
+## /localsearch
+
+Runs nearest neighbor lookup over the minhash representation for a specified subset of documents
 
 * **URL**
 
