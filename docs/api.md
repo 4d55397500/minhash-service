@@ -77,6 +77,6 @@ API
 * **Response:**
 
 	```
-	{"doc301":[{"docKey":"doc483","score":7},{"docKey":"doc318","score":7},{"docKey":"doc773","score":6},{"docKey":"doc768","score":6},
+	{"doc1":[{"docKey":"doc483","score":7},{"docKey":"doc318","score":7},{"docKey":"doc773","score":6},{"docKey":"doc768","score":6},
 	...
 	```
