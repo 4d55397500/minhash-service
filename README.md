@@ -24,6 +24,11 @@ See the [API doc](docs/api.md).
 ### To Do
 Add a UI.
 
+## License
+
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+
+
 #### *Note*
 This system demonstrates minhashing for large scale document search. A modern approach with deep learning can be done by training embeddings and using a nearest neighbor index on the vector representations for lookup.
 
