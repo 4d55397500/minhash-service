@@ -24,7 +24,7 @@ See the [API doc](docs/api.md).
 ### To Do
 Add a UI.
 
-## License
+### License
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
 
