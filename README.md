@@ -4,9 +4,7 @@ minhash-service
 
 [![Build Status](https://travis-ci.org/4d55397500/dataflow-minhash.svg?branch=master)](https://travis-ci.org/4d55397500/minhash-service)
 
-
-A large scale managed min-hashing service for documents. 
-
+Large scale document min-hashing, implemented over Cloud Dataflow and BigQuery.
 
 ### Background
 See the wikipedia [article](https://en.wikipedia.org/wiki/MinHash) on min-hashing.
