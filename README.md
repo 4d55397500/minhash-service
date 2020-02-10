@@ -27,10 +27,9 @@ Two primary operations are supported:
  
 
 ### Running tests
+To run tests,
 ```
- 
 ./gradlew test
-
 ```
 
 ### To Do
