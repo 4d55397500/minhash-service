@@ -3,6 +3,7 @@ minhash-service
 
 
 [![Build Status](https://travis-ci.org/4d55397500/dataflow-minhash.svg?branch=master)](https://travis-ci.org/4d55397500/minhash-service)
+[![Known Vulnerabilities](https://snyk.io/test/github/4d55397500/minhash-service/badge.svg)](https://snyk.io/test/github/4d55397500/minhash-service)
 
 Large scale document min-hashing, implemented over Cloud Dataflow and BigQuery.
 
