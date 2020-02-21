@@ -3,11 +3,9 @@ minhash-service
 
 
 [![Build Status](https://travis-ci.org/4d55397500/dataflow-minhash.svg?branch=master)](https://travis-ci.org/4d55397500/minhash-service)
-
 [![Known Vulnerabilities](https://snyk.io/test/github/4d55397500/minhash-service/badge.svg)](https://snyk.io/test/github/4d55397500/minhash-service)
 
-A large scale managed min-hashing service for documents. 
-
+Large scale document min-hashing, implemented over Cloud Dataflow and BigQuery.
 
 ### Background
 See the wikipedia [article](https://en.wikipedia.org/wiki/MinHash) on min-hashing.
@@ -20,18 +18,19 @@ A Google Cloud Dataflow job converts documents to minhash representations and st
 
 
 ### API
-There are two primary api operations: 
+See the [API doc](docs/api.md).
+
+Two primary operations are supported:
  1) converting documents to minhashes and persisting
  2) nearest neighbor lookup for each of a given subset of documents
 
- See the [API doc](docs/api.md).
+
  
 
 ### Running tests
+To run tests,
 ```
- 
 ./gradlew test
-
 ```
 
 ### To Do
@@ -39,10 +38,10 @@ Add a UI.
 
 ### License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
 
 
 #### *Note*
-This system demonstrates minhashing for large scale document search. A modern approach using deep learning might be training embeddings and using a nearest neighbor index on the vector representations for lookup.
+This system demonstrates minhashing for large scale document search. A modern approach using deep learning might be training embeddings and using a nearest neighbor index on the vector representations for lookup. Also this system is not using a true hashmap data structure for lookup but rather exploiting BigQuery's column store with its flexible and scalable computing resource. 
 
 
