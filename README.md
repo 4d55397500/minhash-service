@@ -16,6 +16,15 @@ A Google Cloud Dataflow job converts documents to minhash representations and st
 
 ![Architecture](./minhash_architecture.png)
 
+### Dataflow Operations
+
+* **FileReaderFn** reads each document given by a key into a tuple (key, document)
+* **Sha256HashFn** computes a sha256 hash for each document
+* **PartialHashesFn** concatenates the min hashes for a document with a dash, 122,133,134 -> '122-133-134'
+* **MinhashFn**
+* **BigQueryMinHashTableFn**
+* **BigQueryHashMapFn**
+* **CombineDocHashes** 
 
 ### API
 See the [API doc](docs/api.md).
