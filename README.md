@@ -26,21 +26,14 @@ Two primary operations are supported:
 
 
  
-### Running tests
+### Run Tests
 To run tests,
 ```
 ./gradlew test
 ```
 
-### To Do
-Add a UI.
 
 ### License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
-
-
-#### *Note*
-This system demonstrates minhashing for large scale document search. A modern approach using deep learning might be training embeddings and using a nearest neighbor index on the vector representations for lookup. Also this system is not using a true hashmap data structure for lookup but rather exploiting BigQuery's column store with its flexible and scalable computing resource. 
-
 
